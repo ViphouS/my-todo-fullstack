@@ -12,21 +12,6 @@ export const FILTERS = [
   { id: 'starred', label: 'Starred', icon: 'star' },
 ]
 
-export const initialUser = {
-  name: 'Viphou Sarun',
-  email: 'viphou@example.com',
-  role: 'Student',
-}
-
-export const initialTodos = [
-  { id: 't1', title: 'Finish React todo assignment', status: 'progress', starred: true },
-  { id: 't2', title: 'Read about useState and props', status: 'done', starred: false },
-  { id: 't3', title: 'Design the profile section', status: 'todo', starred: false },
-  { id: 't4', title: 'Add drag and drop reordering', status: 'todo', starred: true },
-  { id: 't5', title: 'Write README with screenshots', status: 'todo', starred: false },
-  { id: 't6', title: 'Push project to GitHub', status: 'progress', starred: false },
-]
-
 export function matchesFilter(todo, filter) {
   if (filter === 'all') return true
   if (filter === 'starred') return todo.starred

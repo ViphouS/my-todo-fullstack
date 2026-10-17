@@ -1,5 +1,6 @@
 import { AnimatePresence, MotionConfig } from 'motion/react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { api } from './api.js'
 import BulkBar from './components/BulkBar.jsx'
 import Header from './components/Header.jsx'
 import ProfileDialog from './components/ProfileDialog.jsx'
@@ -9,11 +10,12 @@ import Toast from './components/Toast.jsx'
 import TodoForm from './components/TodoForm.jsx'
 import TodoList from './components/TodoList.jsx'
 import Toolbar from './components/Toolbar.jsx'
-import { FILTERS, STATUS, initialTodos, initialUser, matchesFilter, mergeOrder, plural } from './data.js'
+import { FILTERS, STATUS, matchesFilter, mergeOrder, plural } from './data.js'
 
 export default function App() {
-  const [user, setUser] = useState(initialUser)
-  const [todos, setTodos] = useState(initialTodos)
+  const [user, setUser] = useState(null)
+  const [todos, setTodos] = useState([])
+  const [loadError, setLoadError] = useState(false)
   const [filter, setFilter] = useState('all')
   const [query, setQuery] = useState('')
   const [selected, setSelected] = useState(() => new Set())
@@ -35,24 +37,83 @@ export default function App() {
     (t) => matchesFilter(t, filter) && t.title.toLowerCase().includes(q),
   )
 
-  const closeToast = useCallback(() => setToast(null), [])
+  // ---- Server sync ----
+  const reload = useCallback(() => {
+    return Promise.all([api.getTodos(), api.getProfile()])
+      .then(([todos, profile]) => {
+        setTodos(todos)
+        setUser(profile)
+      })
+      .catch(() => setLoadError(true))
+  }, [])
 
-  // Removes todos and offers an undo that restores the previous list.
+  useEffect(() => {
+    reload()
+  }, [reload])
+
+  // Changes show up instantly; if the server rejects one, reload the real data.
+  function save(promise) {
+    return promise.catch(() => {
+      setToast({ message: 'Could not save, reloaded from the server' })
+      reload()
+    })
+  }
+
+  // Deleted todos stay on the server until the undo toast goes away.
+  const pendingDelete = useRef(null)
+  const commitDelete = useCallback(() => {
+    if (!pendingDelete.current) return
+    api.deleteTodos([...pendingDelete.current]).catch(reload)
+    pendingDelete.current = null
+  }, [reload])
+
+  useEffect(() => {
+    addEventListener('pagehide', commitDelete)
+    return () => removeEventListener('pagehide', commitDelete)
+  }, [commitDelete])
+
+  const closeToast = useCallback(() => {
+    commitDelete()
+    setToast(null)
+  }, [commitDelete])
+
+  // Removes todos and offers an undo; nothing is deleted on the server until the toast closes.
   function removeTodos(ids, message) {
-    const previous = todos
+    commitDelete()
+    pendingDelete.current = ids
     setTodos(todos.filter((t) => !ids.has(t.id)))
     setSelected((prev) => new Set([...prev].filter((id) => !ids.has(id))))
-    setToast({ message, undo: () => setTodos(previous) })
+    setToast({
+      message,
+      undo: () => {
+        pendingDelete.current = null
+        reload()
+      },
+    })
+  }
+
+  // Drag-and-drop fires on every step, so only save the order once it settles.
+  const orderTimer = useRef(null)
+  function reorder(reorderedVisible) {
+    const next = mergeOrder(todos, reorderedVisible)
+    setTodos(next)
+    clearTimeout(orderTimer.current)
+    orderTimer.current = setTimeout(() => save(api.saveOrder(next.map((t) => t.id))), 400)
   }
 
   // ---- CRUD ----
   function addTodo(title, status) {
-    setTodos([{ id: crypto.randomUUID(), title, status, starred: false }, ...todos])
-    if (!matchesFilter({ status, starred: false }, filter)) setFilter('all')
+    save(
+      api.createTodo(title, status).then((todo) => {
+        setTodos((prev) => [todo, ...prev])
+        if (!matchesFilter(todo, filter)) setFilter('all')
+      }),
+    )
   }
 
   function updateTodo(id, changes) {
     setTodos(todos.map((t) => (t.id === id ? { ...t, ...changes } : t)))
+    save(api.updateTodo(id, changes))
   }
 
   function deleteTodo(id) {
@@ -77,6 +138,7 @@ export default function App() {
   function bulkSetStatus(status) {
     if (!status) return
     setTodos(todos.map((t) => (selected.has(t.id) ? { ...t, status } : t)))
+    save(api.bulkSetStatus([...selected], status))
     setToast({ message: `Moved ${plural(selected.size, 'task')} to ${STATUS[status]}` })
     setSelected(new Set())
   }
@@ -88,6 +150,30 @@ export default function App() {
   function changeFilter(id) {
     setFilter(id)
     setSelected(new Set())
+  }
+
+  if (!user) {
+    return (
+      <div className="empty" role="status">
+        <strong>{loadError ? 'Could not reach the API' : 'Loading your tasks…'}</strong>
+        {loadError && (
+          <>
+            Make sure the backend is running on port 3000.
+            <div style={{ marginTop: 12 }}>
+              <button
+                className="btn btn-primary"
+                onClick={() => {
+                  setLoadError(false)
+                  reload()
+                }}
+              >
+                Try again
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    )
   }
 
   return (
@@ -129,7 +215,7 @@ export default function App() {
             onSelectAll={selectAllVisible}
             onUpdate={updateTodo}
             onDelete={deleteTodo}
-            onReorder={(reorderedVisible) => setTodos(mergeOrder(todos, reorderedVisible))}
+            onReorder={reorder}
             bulkBar={
               <BulkBar
                 count={selected.size}
@@ -148,8 +234,8 @@ export default function App() {
               doneCount={counts.done}
               total={counts.all}
               onSave={(next) => {
-                setUser(next)
-                setToast({ message: 'Profile updated' })
+                setUser({ ...user, ...next })
+                save(api.updateProfile(next).then(() => setToast({ message: 'Profile updated' })))
               }}
               onClose={() => setProfileOpen(false)}
             />
