@@ -1,4 +1,5 @@
-import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
+import { Entity, Column, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { User } from '../../users/entities/user.entity.js';
 
 @Entity()
 export class Todo {
@@ -13,4 +14,8 @@ export class Todo {
   // Drag-and-drop order; lower comes first
   @Column({ default: 0 })
   position: number;
+  @ManyToOne(() => User, { onDelete: 'CASCADE' })
+  owner: User;
+  @Column()
+  ownerId: number;
 }
