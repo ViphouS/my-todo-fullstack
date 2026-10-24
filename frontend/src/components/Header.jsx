@@ -7,7 +7,7 @@ function greeting() {
   return 'Good evening'
 }
 
-export default function Header({ user, remaining, total, isDark, onToggleTheme, onOpenProfile }) {
+export default function Header({ user, remaining, total, isDark, onToggleTheme, onOpenProfile, onLogout }) {
   const firstName = user.name.split(' ')[0]
 
   let summary = 'Add your first task to get started.'
@@ -40,6 +40,9 @@ export default function Header({ user, remaining, total, isDark, onToggleTheme, 
           aria-haspopup="dialog"
         >
           <Icon name="user" />
+        </button>
+        <button className="icon-btn" onClick={onLogout} aria-label="Sign out">
+          <Icon name="logout" />
         </button>
       </div>
     </header>
