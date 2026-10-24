@@ -1,7 +1,6 @@
 import { AnimatePresence, MotionConfig } from 'motion/react'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { api, setSessionExpiredHandler } from './api.js'
-import AuthScreen from './components/AuthScreen.jsx'
+import { api } from './api.js'
 import BulkBar from './components/BulkBar.jsx'
 import Header from './components/Header.jsx'
 import ProfileDialog from './components/ProfileDialog.jsx'
@@ -14,7 +13,6 @@ import Toolbar from './components/Toolbar.jsx'
 import { FILTERS, STATUS, matchesFilter, mergeOrder, plural } from './data.js'
 
 export default function App() {
-  const [session, setSession] = useState('loading') // 'loading' | 'out' | 'in'
   const [user, setUser] = useState(null)
   const [todos, setTodos] = useState([])
   const [loadError, setLoadError] = useState(false)
@@ -50,15 +48,8 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    api.restoreSession().then(
-      () => setSession('in'),
-      () => setSession('out'),
-    )
-  }, [])
-
-  useEffect(() => {
-    if (session === 'in') reload()
-  }, [session, reload])
+    reload()
+  }, [reload])
 
   // Changes show up instantly; if the server rejects one, reload the real data.
   function save(promise) {
@@ -85,28 +76,6 @@ export default function App() {
     commitDelete()
     setToast(null)
   }, [commitDelete])
-
-  // Forget everything about the signed-in user so the next person starts clean.
-  function clearSession() {
-    pendingDelete.current = null
-    setTodos([])
-    setUser(null)
-    setSelected(new Set())
-    setFilter('all')
-    setQuery('')
-    setProfileOpen(false)
-    setToast(null)
-    setSession('out')
-  }
-
-  useEffect(() => {
-    setSessionExpiredHandler(clearSession)
-  }, [])
-
-  function logout() {
-    commitDelete()
-    api.logout().then(clearSession)
-  }
 
   // Removes todos and offers an undo; nothing is deleted on the server until the toast closes.
   function removeTodos(ids, message) {
@@ -183,25 +152,6 @@ export default function App() {
     setSelected(new Set())
   }
 
-  if (session === 'loading') {
-    return (
-      <div className="empty" role="status">
-        <strong>Loading…</strong>
-      </div>
-    )
-  }
-
-  if (session === 'out') {
-    return (
-      <AuthScreen
-        onDone={() => {
-          setLoadError(false)
-          setSession('in')
-        }}
-      />
-    )
-  }
-
   if (!user) {
     return (
       <div className="empty" role="status">
@@ -246,7 +196,6 @@ export default function App() {
             isDark={isDark}
             onToggleTheme={() => setTheme(isDark ? 'light' : 'dark')}
             onOpenProfile={() => setProfileOpen(true)}
-            onLogout={logout}
           />
           <Stats counts={counts} />
           <TodoForm onAdd={addTodo} />

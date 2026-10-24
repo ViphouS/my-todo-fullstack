@@ -4,12 +4,9 @@ import { AppService } from './app.service.js';
 import { TodosModule } from './todos/todos.module.js';
 import { ProfileModule } from './profile/profile.module.js';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ConfigModule } from '@nestjs/config';
-import { UsersModule } from './users/users.module.js';
-import { AuthModule } from './auth/auth.module.js';
 
 @Module({
-  imports: [ConfigModule.forRoot({ isGlobal: true }), TypeOrmModule.forRoot({
+  imports: [TypeOrmModule.forRoot({
     type: 'postgres',
     host: 'localhost',
     port: 5432,
@@ -19,7 +16,7 @@ import { AuthModule } from './auth/auth.module.js';
     autoLoadEntities: true,
     synchronize: false
   }),
-    TodosModule, ProfileModule, UsersModule, AuthModule],
+    TodosModule, ProfileModule],
   controllers: [AppController],
   providers: [AppService],
 })

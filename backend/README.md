@@ -31,47 +31,6 @@
 $ npm install
 ```
 
-## Configuration
-
-Copy `.env.example` to `.env` and fill in two long random secrets (`.env` is git-ignored):
-
-```bash
-$ node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
-```
-
-```
-JWT_SECRET=<access token secret>
-JWT_REFRESH_SECRET=<refresh token secret>
-```
-
-The database settings are still in `src/app.module.ts` and `src/data-source.ts` (Postgres on `localhost:5432`).
-
-## Database migrations
-
-```bash
-$ npm run typeorm -- migration:run -d src/data-source.ts
-```
-
-The `AddOwnershipAndRole` migration adds a required `ownerId` to `todo` and `profile`, so empty those two tables first if they already hold rows from before accounts existed.
-
-## Authentication
-
-Every route needs `Authorization: Bearer <accessToken>` unless it is marked `@Public()`.
-
-| Method | Path | Notes |
-|---|---|---|
-| POST | `/api/auth/register` | `{ email, password }`, password 8 to 128 characters. 201, or 409 if the email exists. |
-| POST | `/api/auth/login` | Returns `{ accessToken }` (15 minutes) and sets an httpOnly `refresh_token` cookie (7 days). |
-| POST | `/api/auth/refresh` | Swaps the cookie for a new pair. The old refresh token stops working. |
-| POST | `/api/auth/logout` | Signs the user out everywhere. |
-| GET | `/api/auth/me` | The current user. |
-
-- Register and login allow 5 attempts per minute.
-- Using a refresh token twice signs the user out everywhere, because the second use looks like a stolen token.
-- Todos and profiles belong to the signed-in user. Someone else's todo returns 404.
-- Roles are `user` (default) and `admin`. An admin can open any single todo by id. To promote someone: `update users set role = 'admin' where email = '...'`.
-- The frontend and API must share a site (for example `localhost:5173` and `localhost:3000`) for the refresh cookie to be sent.
-
 ## Compile and run the project
 
 ```bash

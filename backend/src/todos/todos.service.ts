@@ -6,8 +6,6 @@ import { QueryTodoDto } from './dto/query-todo.dto.js';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ILike, In, Repository } from 'typeorm';
 import { Todo } from './entities/todo.entity.js'
-import type { AuthUser } from '../auth/auth-user.js';
-import { Role } from '../users/role.enum.js';
 
 @Injectable()
 export class TodosService {
@@ -16,10 +14,9 @@ export class TodosService {
     private repo: Repository<Todo>,
   ) { }
 
-  findAll(user: AuthUser, query: QueryTodoDto = {}) {
+  findAll(query: QueryTodoDto = {}) {
     return this.repo.find({
       where: {
-        ownerId: user.id,
         ...(query.status && { status: query.status }),
         ...(query.q && { title: ILike(`%${query.q}%`) }),
       },
@@ -27,45 +24,45 @@ export class TodosService {
     });
   }
 
-  async findOne(id: number, user: AuthUser) {
-    const todo = await this.repo.findOneBy(user.role === Role.Admin ? { id } : { id, ownerId: user.id });
+  async findOne(id: number) {
+    const todo = await this.repo.findOneBy({ id });
     if (!todo) throw new NotFoundException(`Todo #${id} not found`);
     return todo;
   }
 
-  async create(dto: CreateTodoDto, user: AuthUser) {
+  async create(dto: CreateTodoDto) {
     // New todos go to the top of the list
-    const first = await this.repo.findOne({ where: { ownerId: user.id }, order: { position: "ASC" } });
-    const todo = this.repo.create({ ...dto, ownerId: user.id });
+    const first = await this.repo.findOne({ where: {}, order: { position: "ASC" } });
+    const todo = this.repo.create(dto);
     todo.position = first ? first.position - 1 : 0;
     return this.repo.save(todo);
   }
 
-  async update(id: number, dto: UpdateTodoDto, user: AuthUser) {
-    const todo = await this.findOne(id, user);
+  async update(id: number, dto: UpdateTodoDto) {
+    const todo = await this.findOne(id);
     return this.repo.save(this.repo.merge(todo, dto));
   }
 
-  async remove(id: number, user: AuthUser) {
-    const todo = await this.findOne(id, user);
+  async remove(id: number) {
+    const todo = await this.findOne(id);
     await this.repo.remove(todo);
   }
 
-  async bulkUpdate({ ids, ...changes }: BulkUpdateTodoDto, user: AuthUser) {
-    await this.repo.update({ id: In(ids), ownerId: user.id }, changes);
-    return this.repo.findBy({ id: In(ids), ownerId: user.id });
+  async bulkUpdate({ ids, ...changes }: BulkUpdateTodoDto) {
+    await this.repo.update({ id: In(ids) }, changes);
+    return this.repo.findBy({ id: In(ids) });
   }
 
-  async bulkRemove(ids: number[], user: AuthUser) {
-    await this.repo.delete({ id: In(ids), ownerId: user.id });
+  async bulkRemove(ids: number[]) {
+    await this.repo.delete({ id: In(ids) });
   }
 
-  async reorder(ids: number[], user: AuthUser) {
+  async reorder(ids: number[]) {
     await this.repo.manager.transaction(async (manager) => {
       for (const [position, id] of ids.entries()) {
-        await manager.update(Todo, { id, ownerId: user.id }, { position });
+        await manager.update(Todo, { id }, { position });
       }
     });
-    return this.findAll(user);
+    return this.findAll();
   }
 }
