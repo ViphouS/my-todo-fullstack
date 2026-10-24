@@ -286,6 +286,22 @@ dialog::backdrop { background: rgb(4 20 18 / .45); }
 .field .err { color: var(--danger); font-size: 13px; margin-top: 4px; }
 .dlg-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 0 20px 20px; }
 
+/* ---------- Sign in ---------- */
+.auth { min-height: 100vh; display: grid; place-items: center; padding: 16px; }
+.auth-card {
+  width: min(400px, 100%); padding: 28px; display: flex; flex-direction: column; gap: 16px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+}
+.auth-card .brand { padding: 0; }
+.auth-card h1 { margin: 0; font-size: 22px; color: var(--fg-strong); }
+.auth-card p { margin: 4px 0 0; color: var(--muted-fg); font-size: 14px; }
+.auth-card .note { font-size: 13px; color: var(--muted-fg); margin-top: 4px; }
+.auth-card .err { min-height: 20px; margin: -4px 0; color: var(--danger); font-size: 14px; }
+.auth-card .link {
+  min-height: 44px; border: 0; background: transparent; color: var(--primary); font-weight: 600; font-size: 14px;
+}
+.auth-card .link:hover { text-decoration: underline; }
+
 /* ---------- Toast ---------- */
 .toast-wrap { position: fixed; inset: auto 16px 24px; z-index: 10; display: flex; justify-content: center; pointer-events: none; }
 .toast {
