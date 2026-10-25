@@ -1,4 +1,5 @@
-import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
+import { Entity, Column, OneToOne, JoinColumn, PrimaryGeneratedColumn } from 'typeorm';
+import { User } from '../../users/entities/user.entity.js';
 
 @Entity()
 export class Profile {
@@ -10,4 +11,9 @@ export class Profile {
   email: string;
   @Column({ length: 100, default: "" })
   role: string;
+  @OneToOne(() => User, { onDelete: 'CASCADE' })
+  @JoinColumn()
+  owner: User;
+  @Column()
+  ownerId: number;
 }
