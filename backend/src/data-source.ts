@@ -1,7 +1,7 @@
 import { DataSource } from "typeorm";
 export default new DataSource({
   type: "postgres",
-  host: "localhost", port: 5432,
+  host: process.env.DB_HOST ?? "localhost", port: 5432,
   username: "postgres",
   password: "postgres",
   database: "todo",
