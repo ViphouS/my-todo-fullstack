@@ -11,7 +11,7 @@ import { AuthModule } from './auth/auth.module.js';
 @Module({
   imports: [ConfigModule.forRoot({ isGlobal: true }), TypeOrmModule.forRoot({
     type: 'postgres',
-    host: 'localhost',
+    host: process.env.DB_HOST ?? 'localhost',
     port: 5432,
     username: 'postgres',
     password: 'postgres',
